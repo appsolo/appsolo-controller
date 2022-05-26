@@ -24,10 +24,6 @@ spec:
           image: ghcr.io/appsolo-com/appsolo-controller:v0.1.0
           args:
             - --v=5
-          livenessProbe:
-            httpGet:
-              port: 8080
-              path: /healthz
       affinity:
         podAntiAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
@@ -54,12 +50,15 @@ rules:
       - delete
       - update
       - create
+      - patch
     apiGroups:
       - ""
+      - "apps"
     resources:
       - pods
       - services
       - statefulsets
+      - events
 # For leader election
 # ---
 # apiVersion: rbac.authorization.k8s.io/v1

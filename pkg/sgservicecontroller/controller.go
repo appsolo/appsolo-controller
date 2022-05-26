@@ -1,15 +1,3 @@
-// A sgcontroller monitors Pods and their attached PersistentVolumes
-// and removes Pods whose storage is "unhealthy".
-//
-// In general, the sgcontroller uses two inputs: The Kubernetes API,
-// to get information about Pods and their volumes, and a user provided
-// stream of "failing" volumes. Once it is notified of a failing volume,
-// it will try to delete the currently attached Pod and VolumeAttachment,
-// which triggers Kubernetes to recreate the Pod with healthy volumes.
-//
-// "Failing" in this context means that the current resource user is not
-// able to write to the volume, i.e. it is safe to attach the volume from
-// another node in ReadWriteOnce scenarios.
 package sgservicecontroller
 
 import (
@@ -20,6 +8,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/clock"
@@ -33,7 +22,7 @@ import (
 // Options to pass when creating a new sgcontroller
 type Option func(sgc *SgController)
 
-// Set an EventRecorder that will be notified about Pod and VolumeAttachment deletions
+// Set an EventRecorder that will be notified of any events that occur
 func WithEventRecorder(ev record.EventRecorder) Option {
 	return func(sgc *SgController) {
 		sgc.evRecorder = ev
@@ -62,17 +51,13 @@ func NewSGServiceController(name string, kubeClient kubernetes.Interface, opts .
 	return sgController
 }
 
-// Start monitoring volumes and kill pods that use failing volumes.
-//
-// This will listen for any updates on: Pods, PVCs, VolumeAttachments (VA) to keep
-// it's own "state of the world" up-to-date, without requiring a full re-query of all resources.
+// Start monitoring the Kubernetes API for changes to the StatefulSet objects
 func (sgc *SgController) Run(ctx context.Context) error {
 	statefulSetUpdates, err := sgc.watchStatefulSets(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to set up StatefulSet watch: %w", err)
 	}
 
-	// Here we update our state-of-the-world and check if we we need to remove any failing volume attachments and pods
 	for {
 		var err error
 		select {
@@ -135,7 +120,7 @@ func (sgc *SgController) watchStatefulSets(ctx context.Context) (<-chan watch.Ev
 
 		for item := range w.ResultChan() {
 			if item.Type == watch.Bookmark {
-				watchOpts.ResourceVersion = item.Object.(*corev1.Pod).ResourceVersion
+				watchOpts.ResourceVersion = item.Object.(*appsv1.StatefulSet).ResourceVersion
 				log.WithField("resource-version", watchOpts.ResourceVersion).Trace("StatefulSet watch resource version updated")
 				continue
 			}
@@ -152,7 +137,7 @@ func (sgc *SgController) watchStatefulSets(ctx context.Context) (<-chan watch.Ev
 // function setupService to setup a service
 func (sgc *SgController) setupService(ctx context.Context, statefulSet *appsv1.StatefulSet) error {
 	// set the service name
-	serviceName := statefulSet.Name + "-replica-besteffort"
+	serviceName := statefulSet.Name + "-replicas-besteffort"
 	// set the service namespace
 	serviceNamespace := statefulSet.Namespace
 
@@ -233,7 +218,7 @@ func (sgc *SgController) HandleStatefulSetWatchEvent(ctx context.Context, ev wat
 
 func (sgc *SgController) updateFromStatefulSet(statefulSet *appsv1.StatefulSet) {
 	// set the service name
-	serviceName := statefulSet.Name + "-replica-besteffort"
+	serviceName := statefulSet.Name + "-replicas-besteffort"
 	// set the service namespace
 	serviceNamespace := statefulSet.Namespace
 	// error if we cannot get the service
@@ -244,7 +229,7 @@ func (sgc *SgController) updateFromStatefulSet(statefulSet *appsv1.StatefulSet) 
 	}
 
 	if statefulSet.Status.ReadyReplicas == 1 {
-		service.Spec.Selector["role"] = "primary"
+		service.Spec.Selector["role"] = "master"
 
 		_, err = sgc.kubeClient.CoreV1().Services(serviceNamespace).Update(context.Background(), service, metav1.UpdateOptions{})
 		if err != nil {
@@ -271,12 +256,18 @@ func (sgc *SgController) updateFromStatefulSet(statefulSet *appsv1.StatefulSet) 
 // if statefulset deleted, delete service
 func (sgc *SgController) deleteFromStatefulSet(statefulSet *appsv1.StatefulSet) {
 	// set the service name
-	serviceName := statefulSet.Name + "-replica-besteffort"
+	serviceName := statefulSet.Name + "-replicas-besteffort"
 	// set the service namespace
 	serviceNamespace := statefulSet.Namespace
 
+	// return if the service doesn't exist
+	_, err := sgc.kubeClient.CoreV1().Services(serviceNamespace).Get(context.Background(), serviceName, metav1.GetOptions{})
+	if errors.IsNotFound(err) {
+		return
+	}
+
 	// delete the service
-	err := sgc.kubeClient.CoreV1().Services(serviceNamespace).Delete(context.Background(), serviceName, metav1.DeleteOptions{})
+	err = sgc.kubeClient.CoreV1().Services(serviceNamespace).Delete(context.Background(), serviceName, metav1.DeleteOptions{})
 	if err != nil {
 		log.WithError(err).Errorf("Error deleting service %s/%s", serviceNamespace, serviceName)
 	}

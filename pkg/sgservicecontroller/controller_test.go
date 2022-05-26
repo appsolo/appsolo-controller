@@ -25,7 +25,7 @@ const (
 	fakePodWithVolumeName = "fake-pg-data"
 	fakePVName            = "fake-pg-data-pvc"
 	fakeLabel             = "fake-postgres-label"
-	fakeServiceName       = fakeStatefulSetName + "-replica-besteffort"
+	fakeServiceName       = fakeStatefulSetName + "-replicas-besteffort"
 )
 
 var (
@@ -154,7 +154,7 @@ func TestSGController_Run_SingleReplica(t *testing.T) {
 	service, err := kubeClient.CoreV1().Services(fakeNamespace).Get(ctx, fakeServiceName, metav1.GetOptions{})
 	assert.NoError(t, err, "service should exist")
 
-	assert.Equal(t, "primary", service.Spec.Selector["role"], "service selector should have role primary")
+	assert.Equal(t, "master", service.Spec.Selector["role"], "service selector should have role master")
 }
 
 func TestSGController_Run_MultiReplica(t *testing.T) {
