@@ -38,7 +38,7 @@ check:
 	go vet ./...
 
 test:
-	go test -timeout 30s github.com/appsolo-com/appsolo-controller/pkg/sgservicecontroller -v
+	go test -timeout 30s github.com/appsolo-com/appsolo-controller/pkg/.../ -v
 
 fmt:
 	@gofmt -l -w $(SRC)

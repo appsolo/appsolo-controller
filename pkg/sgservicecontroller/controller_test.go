@@ -2,6 +2,7 @@ package sgservicecontroller_test
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -98,7 +99,9 @@ func TestSGController_Run_ServiceCreateExisting(t *testing.T) {
 	reconcileCtx, reconcileStop := context.WithTimeout(ctx, 200*time.Millisecond)
 	defer reconcileStop()
 
-	err := sgController.Run(reconcileCtx)
+	var wg sync.WaitGroup
+	wg.Add(1)
+	err := sgController.Run(reconcileCtx, &wg)
 	assert.EqualError(t, err, "context deadline exceeded")
 
 	_, err = kubeClient.CoreV1().Services(fakeNamespace).Get(ctx, fakeServiceName, metav1.GetOptions{})
@@ -119,7 +122,9 @@ func TestSGController_Run_ServiceCreateNew(t *testing.T) {
 	reconcileCtx, reconcileStop := context.WithTimeout(ctx, 200*time.Millisecond)
 	defer reconcileStop()
 
-	err := sgController.Run(reconcileCtx)
+	var wg sync.WaitGroup
+	wg.Add(1)
+	err := sgController.Run(reconcileCtx, &wg)
 	assert.EqualError(t, err, "context deadline exceeded")
 
 	err = sgController.HandleStatefulSetWatchEvent(ctx, watch.Event{Type: watch.Added, Object: statefulSet})
@@ -143,7 +148,9 @@ func TestSGController_Run_SingleReplica(t *testing.T) {
 	reconcileCtx, reconcileStop := context.WithTimeout(ctx, 200*time.Millisecond)
 	defer reconcileStop()
 
-	err := sgController.Run(reconcileCtx)
+	var wg sync.WaitGroup
+	wg.Add(1)
+	err := sgController.Run(reconcileCtx, &wg)
 	assert.EqualError(t, err, "context deadline exceeded")
 
 	statefulSet.Status.ReadyReplicas = 1
@@ -171,7 +178,9 @@ func TestSGController_Run_MultiReplica(t *testing.T) {
 	reconcileCtx, reconcileStop := context.WithTimeout(ctx, 200*time.Millisecond)
 	defer reconcileStop()
 
-	err := sgController.Run(reconcileCtx)
+	var wg sync.WaitGroup
+	wg.Add(1)
+	err := sgController.Run(reconcileCtx, &wg)
 	assert.EqualError(t, err, "context deadline exceeded")
 
 	statefulSet.Status.ReadyReplicas = 2
@@ -198,7 +207,9 @@ func TestSGController_Run_DeleteStatefulSet(t *testing.T) {
 	reconcileCtx, reconcileStop := context.WithTimeout(ctx, 200*time.Millisecond)
 	defer reconcileStop()
 
-	err := sgController.Run(reconcileCtx)
+	var wg sync.WaitGroup
+	wg.Add(1)
+	err := sgController.Run(reconcileCtx, &wg)
 	assert.EqualError(t, err, "context deadline exceeded")
 
 	err = sgController.HandleStatefulSetWatchEvent(ctx, watch.Event{Type: watch.Deleted, Object: statefulSet})

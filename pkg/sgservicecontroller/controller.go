@@ -3,6 +3,7 @@ package sgservicecontroller
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -52,7 +53,8 @@ func NewSGServiceController(name string, kubeClient kubernetes.Interface, opts .
 }
 
 // Start monitoring the Kubernetes API for changes to the StatefulSet objects
-func (sgc *SgController) Run(ctx context.Context) error {
+func (sgc *SgController) Run(ctx context.Context, wg *sync.WaitGroup) error {
+	defer wg.Done()
 	statefulSetUpdates, err := sgc.watchStatefulSets(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to set up StatefulSet watch: %w", err)

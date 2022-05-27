@@ -21,7 +21,7 @@ spec:
       serviceAccountName: appsolo-controller
       containers:
         - name: controller
-          image: ghcr.io/appsolo-com/appsolo-controller:v0.1.0
+          image: ghcr.io/appsolo-com/appsolo-controller:v0.1.1
           args:
             - --v=5
       affinity:
@@ -59,6 +59,7 @@ rules:
       - services
       - statefulsets
       - events
+      - nodes
 # For leader election
 # ---
 # apiVersion: rbac.authorization.k8s.io/v1

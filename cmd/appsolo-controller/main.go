@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"os/signal"
+	"sync"
 	"syscall"
 
 	log "github.com/sirupsen/logrus"
@@ -16,6 +17,7 @@ import (
 
 	"github.com/appsolo-com/appsolo-controller/pkg/consts"
 	"github.com/appsolo-com/appsolo-controller/pkg/k8s"
+	"github.com/appsolo-com/appsolo-controller/pkg/nfshacontroller"
 	"github.com/appsolo-com/appsolo-controller/pkg/sgservicecontroller"
 )
 
@@ -30,6 +32,8 @@ type args struct {
 }
 
 func main() {
+	var wg sync.WaitGroup
+
 	args := parseArgs()
 
 	log.SetLevel(log.Level(args.loglevel))
@@ -45,11 +49,6 @@ func main() {
 
 	recorder := eventRecorder(kubeClient)
 
-	sgServiceControllerOpts := []sgservicecontroller.Option{
-		sgservicecontroller.WithEventRecorder(recorder),
-		sgservicecontroller.WithStatefulSetSelector(metav1.ListOptions{LabelSelector: "app=StackGresCluster"}),
-	}
-
 	// Not currently needed
 	// if args.enableLeaderElection {
 	// 	leaderElector, err := leaderElector(ctx, kubeClient, args.leaderElectionLeaseName, args.leaderElectionNamespace, args.leaderElectionResourceName, args.leaderElectionHealthzPort, recorder)
@@ -59,12 +58,35 @@ func main() {
 	// 	sgServiceControllerOpts = append(sgServiceControllerOpts, sgservicecontroller.WithLeaderElector(leaderElector))
 	// }
 
+	sgServiceControllerOpts := []sgservicecontroller.Option{
+		sgservicecontroller.WithEventRecorder(recorder),
+		sgservicecontroller.WithStatefulSetSelector(metav1.ListOptions{LabelSelector: "app=StackGresCluster"}),
+	}
+
 	sgController := sgservicecontroller.NewSGServiceController(consts.Name, kubeClient, sgServiceControllerOpts...)
 
-	err = sgController.Run(ctx)
-	if err != nil {
-		log.WithError(err).Fatal("failed to run SG Controller")
+	wg.Add(1)
+	go func() {
+		if err := sgController.Run(ctx, &wg); err != nil {
+			log.WithError(err).Fatal("failed to run sgservicecontroller")
+		}
+	}()
+
+	nfshaControllerOpts := []nfshacontroller.Option{
+		nfshacontroller.WithEventRecorder(recorder),
+		nfshacontroller.WithPodSelector(metav1.ListOptions{LabelSelector: "app=nfs-server-provisioner"}),
 	}
+
+	nfshaController := nfshacontroller.NewNFSHAController(consts.Name, kubeClient, nfshaControllerOpts...)
+
+	wg.Add(1)
+	go func() {
+		if err := nfshaController.Run(ctx, &wg); err != nil {
+			log.WithError(err).Fatal("failed to run NFS HA Controller")
+		}
+	}()
+
+	wg.Wait()
 }
 
 // func leaderElector(ctx context.Context, kubeClient kubernetes.Interface, identity, namespace, name string, healthPort int, recorder record.EventRecorder) (*leaderelection.LeaderElector, error) {
