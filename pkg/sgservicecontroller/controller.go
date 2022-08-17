@@ -74,7 +74,7 @@ func (sgc *SgController) Run(ctx context.Context, wg *sync.WaitGroup) error {
 		}
 
 		if err != nil {
-			return fmt.Errorf("error processing event: %w", err)
+			log.WithError(err).Info("error processing event: %w", err)
 		}
 	}
 }
