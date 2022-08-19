@@ -19,6 +19,14 @@ spec:
         app.kubernetes.io/name: appsolo-controller
     spec:
       serviceAccountName: appsolo-controller
+      tolerations:
+      - key: node-role.kubernetes.io/master
+        effect: NoSchedule
+      - key: node-role.kubernetes.io/control-plane
+        effect: NoSchedule
+      nodeSelector:
+        node-role.kubernetes.io/master: ""
+        node-role.kubernetes.io/control-plane: ""
       containers:
         - name: controller
           image: ghcr.io/appsolo-com/appsolo-controller:v0.1.2
