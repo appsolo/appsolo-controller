@@ -106,7 +106,7 @@ func (nfsc *NfshaController) watchPods(ctx context.Context) (<-chan watch.Event,
 		for item := range w.ResultChan() {
 			if item.Type == watch.Bookmark {
 				watchOpts.ResourceVersion = item.Object.(*corev1.Pod).ResourceVersion
-				log.WithField("resource-version", watchOpts.ResourceVersion).Trace("Pod watch resource version updated")
+				log.WithField("resource-version", watchOpts.ResourceVersion).Debug("Pod watch resource version updated")
 				continue
 			}
 
@@ -144,6 +144,24 @@ func (nfsc *NfshaController) deleteFromPod(ctx context.Context, pod *corev1.Pod)
 		return
 	}
 
+	// check if the node is not ready
+	node, err := nfsc.kubeClient.CoreV1().Nodes().Get(ctx, pod.Spec.NodeName, metav1.GetOptions{})
+	if err != nil {
+		log.WithError(err).Errorf("Error deleting pod %s/%s", pod.Namespace, pod)
+		return
+	}
+
+	// search the node.Status.Conditions array for the condition type "Ready"
+	for i := range node.Status.Conditions {
+		if node.Status.Conditions[i].Type == "Ready" {
+			if node.Status.Conditions[i].Status == "True" {
+				// node is ready, do nothing
+				log.WithField("pod", pod).Debug("Not deleting pod, node is ready")
+				return
+			}
+		}
+	}
+
 	nodeNotReadyEvent := false
 
 	// If it's a test just find the event through a loop as FieldSelector does not work on the fake client
@@ -166,54 +184,42 @@ func (nfsc *NfshaController) deleteFromPod(ctx context.Context, pod *corev1.Pod)
 	}
 
 	if !nodeNotReadyEvent {
-		log.WithField("pod", pod).Trace("Not deleting pod, node is ready")
+		log.WithField("pod", pod).Debug("Not deleting pod, node is ready")
 		return
-	}
-
-	// check if the node is not ready
-	node, err := nfsc.kubeClient.CoreV1().Nodes().Get(ctx, pod.Spec.NodeName, metav1.GetOptions{})
-	if err != nil {
-		log.WithError(err).Errorf("Error deleting pod %s/%s", pod.Namespace, pod)
-		return
-	}
-
-	// search the node.Status.Conditions array for the condition type "Ready"
-	for i := range node.Status.Conditions {
-		if node.Status.Conditions[i].Type == "Ready" {
-			if node.Status.Conditions[i].Status == "True" {
-				// node is ready, do nothing
-				log.WithField("pod", pod).Trace("Not deleting pod, node is ready")
-				return
-			}
-		}
 	}
 
 	provisionerName := "openebs.io/nfsrwx"
 
-	// Find bound pvcs with storageclass name
-	pvcListWithAnnotation := &corev1.PersistentVolumeClaimList{}
+	// Get the list of PVCs from the pod
+	pvcNameList := []string{}
 
-	// Get all pvcs in namespace
-	pvcList, err := nfsc.kubeClient.CoreV1().PersistentVolumeClaims(pod.Namespace).List(ctx, metav1.ListOptions{})
-
-	if err != nil {
-		log.WithError(err).Errorf("Error deleting pod %s/%s", pod.Namespace, pod)
-		return
+	for _, volume := range pod.Spec.Volumes {
+		if volume.PersistentVolumeClaim != nil {
+			pvcNameList = append(pvcNameList, volume.PersistentVolumeClaim.ClaimName)
+		}
 	}
 
-	for _, pvc := range pvcList.Items {
+	// Get the list of PVCs from the pvcNameList
+	pvcListWithAnnotation := &corev1.PersistentVolumeClaimList{}
+
+	for _, pvcName := range pvcNameList {
+		pvc, err := nfsc.kubeClient.CoreV1().PersistentVolumeClaims(pod.Namespace).Get(ctx, pvcName, metav1.GetOptions{})
+		if err != nil {
+			log.WithError(err).Errorf("Error deleting pod %s/%s", pod.Namespace, pod)
+			return
+		}
 		annotations := pvc.GetAnnotations()
 
 		for key, value := range annotations {
 			if key == "volume.kubernetes.io/storage-provisioner" && value == provisionerName {
-				log.WithField("pvc", pvc.Name).Trace("Found pvc with provisioner annotation")
-				pvcListWithAnnotation.Items = append(pvcListWithAnnotation.Items, pvc)
+				log.WithField("pvc", pvc.Name).Debug("Found pvc with provisioner annotation")
+				pvcListWithAnnotation.Items = append(pvcListWithAnnotation.Items, *pvc)
 			}
 		}
 	}
 
 	if len(pvcListWithAnnotation.Items) == 0 {
-		log.WithField("pod", pod).Trace("Not deleting pod, no pvc found")
+		log.WithField("pod", pod).Debug("Not deleting pod, no pvc found")
 		return
 	}
 
