@@ -15,7 +15,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
 
-	"github.com/appsolo-com/appsolo-controller/pkg/sgservicecontroller"
+	"github.com/appsolo/appsolo-controller/pkg/sgservicecontroller"
 )
 
 const (

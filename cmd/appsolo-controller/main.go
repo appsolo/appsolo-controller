@@ -15,10 +15,10 @@ import (
 	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/record"
 
-	"github.com/appsolo-com/appsolo-controller/pkg/consts"
-	"github.com/appsolo-com/appsolo-controller/pkg/k8s"
-	"github.com/appsolo-com/appsolo-controller/pkg/nfshacontroller"
-	"github.com/appsolo-com/appsolo-controller/pkg/sgservicecontroller"
+	"github.com/appsolo/appsolo-controller/pkg/consts"
+	"github.com/appsolo/appsolo-controller/pkg/k8s"
+	"github.com/appsolo/appsolo-controller/pkg/nfshacontroller"
+	"github.com/appsolo/appsolo-controller/pkg/sgservicecontroller"
 )
 
 type args struct {

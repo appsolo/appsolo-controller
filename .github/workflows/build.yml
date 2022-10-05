@@ -28,7 +28,7 @@ jobs:
           platforms: linux/amd64
           push: ${{ github.event_name != 'pull_request' }}
           tags: >-
-            ghcr.io/appsolo-com/appsolo-controller:${{ github.ref_name }},
-            ghcr.io/appsolo-com/appsolo-controller:latest
+            ghcr.io/appsolo/appsolo-controller:${{ github.ref_name }},
+            ghcr.io/appsolo/appsolo-controller:latest
       - name: Image digest
         run: echo ${{ steps.docker_build.outputs.digest }}

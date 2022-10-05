@@ -1,5 +1,5 @@
 PROJECT ?= appsolo-controller
-REGISTRY ?= ghcr.io/appsolo-com
+REGISTRY ?= ghcr.io/appsolo
 PLATFORMS ?= linux/amd64,linux/arm64
 VERSION ?= $(shell git describe --tags --match "v*.*" HEAD)
 TAG ?= $(VERSION)
@@ -38,7 +38,7 @@ check:
 	go vet ./...
 
 test:
-	go test -timeout 30s github.com/appsolo-com/appsolo-controller/pkg/.../ -v
+	go test -timeout 30s github.com/appsolo/appsolo-controller/pkg/.../ -v
 
 fmt:
 	@gofmt -l -w $(SRC)

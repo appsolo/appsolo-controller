@@ -1,4 +1,4 @@
-module github.com/appsolo-com/appsolo-controller
+module github.com/appsolo/appsolo-controller
 
 go 1.16
 
