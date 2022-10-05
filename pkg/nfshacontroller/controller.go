@@ -156,7 +156,7 @@ func (nfsc *NfshaController) deleteFromPod(ctx context.Context, pod *corev1.Pod)
 		if node.Status.Conditions[i].Type == "Ready" {
 			if node.Status.Conditions[i].Status == "True" {
 				// node is ready, do nothing
-				log.WithField("pod", pod).Debug("Not deleting pod, node is ready")
+				log.WithField("pod", pod.Name).Debug("Not deleting pod, node is ready")
 				return
 			}
 		}
@@ -184,7 +184,7 @@ func (nfsc *NfshaController) deleteFromPod(ctx context.Context, pod *corev1.Pod)
 	}
 
 	if !nodeNotReadyEvent {
-		log.WithField("pod", pod).Debug("Not deleting pod, node is ready")
+		log.WithField("pod", pod.Name).Debug("Not deleting pod, node is ready")
 		return
 	}
 
@@ -219,7 +219,7 @@ func (nfsc *NfshaController) deleteFromPod(ctx context.Context, pod *corev1.Pod)
 	}
 
 	if len(pvcListWithAnnotation.Items) == 0 {
-		log.WithField("pod", pod).Debug("Not deleting pod, no pvc found")
+		log.WithField("pod", pod.Name).Debug("Not deleting pod, no pvc found")
 		return
 	}
 
