@@ -21,15 +21,16 @@ spec:
       serviceAccountName: appsolo-controller
       tolerations:
       - key: node-role.kubernetes.io/master
+        operator: Exists
         effect: NoSchedule
       - key: node-role.kubernetes.io/control-plane
+        operator: Exists
         effect: NoSchedule
       nodeSelector:
-        node-role.kubernetes.io/master: ""
         node-role.kubernetes.io/control-plane: ""
       containers:
         - name: controller
-          image: ghcr.io/appsolo-com/appsolo-controller:v0.1.2
+          image: ghcr.io/appsolo/appsolo-controller:v0.1.4
           args:
             - --v=5
       affinity:

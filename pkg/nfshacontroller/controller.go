@@ -188,9 +188,7 @@ func (nfsc *NfshaController) deleteFromPod(ctx context.Context, pod *corev1.Pod)
 		}
 	}
 
-	// Get the owner reference of the pod
-	ownerRef := metav1.GetControllerOf(pod)
-	provisionerName := "cluster.local/" + ownerRef.Name
+	provisionerName := "openebs.io/nfsrwx"
 
 	// Find bound pvcs with storageclass name
 	pvcListWithAnnotation := &corev1.PersistentVolumeClaimList{}
@@ -217,64 +215,6 @@ func (nfsc *NfshaController) deleteFromPod(ctx context.Context, pod *corev1.Pod)
 	if len(pvcListWithAnnotation.Items) == 0 {
 		log.WithField("pod", pod).Trace("Not deleting pod, no pvc found")
 		return
-	}
-
-	for _, pvc := range pvcListWithAnnotation.Items {
-		// Check if the pvc is bound
-		if pvc.Status.Phase != corev1.ClaimBound {
-			log.WithField("pvc", pvc).Trace("PVC is not bound, continuing")
-			continue
-		} else if pvc.Status.Phase == corev1.ClaimBound {
-			// Find pods with pvc name
-
-			// Get pods list
-			podList, _ := nfsc.kubeClient.CoreV1().Pods(pod.Namespace).List(ctx, metav1.ListOptions{})
-
-			// Create new pod list
-			podsWithPVC := &corev1.PodList{}
-
-			// Filter pods to check if PVC exists, if yes append to the list
-			for _, podPVC := range podList.Items {
-				for _, volume := range podPVC.Spec.Volumes {
-					if volume.PersistentVolumeClaim != nil {
-						if volume.PersistentVolumeClaim.ClaimName == pvc.GetObjectMeta().GetName() {
-							podsWithPVC.Items = append(podsWithPVC.Items, podPVC)
-							log.WithField("pod", podPVC).Trace("Pod found with PVC")
-						}
-					}
-				}
-			}
-			if len(podsWithPVC.Items) == 0 {
-				log.WithField("pvc", pvc).Trace("No pods found with PVC")
-				continue
-			}
-
-			// Delete pods with pvc name
-			for _, podWithPVC := range podsWithPVC.Items {
-				// Iterations use pointers (same place in mem for all), so we need to copy the pod
-				podWithPVC := podWithPVC
-
-				ownerRef := metav1.GetControllerOf(&podWithPVC)
-
-				if ownerRef != nil && ownerRef.Kind != "ReplicaSet" {
-					log.WithField("pod", podWithPVC).Trace("Not deleting pod, not a replica set")
-					continue
-				}
-
-				log.WithField("pod", podWithPVC.Name).Debug("Force deleting pod as pv is bound")
-				// Force delete the pod
-				noGracePeriod := int64(0)
-				err = nfsc.kubeClient.CoreV1().Pods(podWithPVC.Namespace).Delete(ctx, podWithPVC.Name, metav1.DeleteOptions{GracePeriodSeconds: &noGracePeriod})
-				if err != nil && !errors.IsNotFound(err) {
-					if err != nil {
-						log.WithError(err).Errorf("Error deleting pod %s/%s", podWithPVC.Namespace, err)
-						return
-					}
-				}
-
-				nfsc.eventf(&podWithPVC, corev1.EventTypeWarning, "ForceDeleted", "pod deleted because node is not ready and attached pv needs to be rescheduled")
-			}
-		}
 	}
 
 	log.WithField("pod", pod.Name).Debug("Force deleting pod")

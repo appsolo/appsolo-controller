@@ -17,6 +17,7 @@ import (
 
 	"github.com/appsolo-com/appsolo-controller/pkg/consts"
 	"github.com/appsolo-com/appsolo-controller/pkg/k8s"
+	"github.com/appsolo-com/appsolo-controller/pkg/nfshacontroller"
 	"github.com/appsolo-com/appsolo-controller/pkg/sgservicecontroller"
 )
 
@@ -71,20 +72,19 @@ func main() {
 		}
 	}()
 
-	// Disable nfshacontroller for now
-	// nfshaControllerOpts := []nfshacontroller.Option{
-	// 	nfshacontroller.WithEventRecorder(recorder),
-	// 	nfshacontroller.WithPodSelector(metav1.ListOptions{LabelSelector: "app=nfs-server-provisioner"}),
-	// }
+	nfshaControllerOpts := []nfshacontroller.Option{
+		nfshacontroller.WithEventRecorder(recorder),
+		nfshacontroller.WithPodSelector(metav1.ListOptions{LabelSelector: "app=nfs-server-provisioner"}),
+	}
 
-	// nfshaController := nfshacontroller.NewNFSHAController(consts.Name, kubeClient, nfshaControllerOpts...)
+	nfshaController := nfshacontroller.NewNFSHAController(consts.Name, kubeClient, nfshaControllerOpts...)
 
-	// wg.Add(1)
-	// go func() {
-	// 	if err := nfshaController.Run(ctx, &wg); err != nil {
-	// 		log.WithError(err).Fatal("failed to run NFS HA Controller")
-	// 	}
-	// }()
+	wg.Add(1)
+	go func() {
+		if err := nfshaController.Run(ctx, &wg); err != nil {
+			log.WithError(err).Fatal("failed to run NFS HA Controller")
+		}
+	}()
 
 	wg.Wait()
 }
