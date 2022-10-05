@@ -147,7 +147,7 @@ func (nfsc *NfshaController) deleteFromPod(ctx context.Context, pod *corev1.Pod)
 	// check if the node is not ready
 	node, err := nfsc.kubeClient.CoreV1().Nodes().Get(ctx, pod.Spec.NodeName, metav1.GetOptions{})
 	if err != nil {
-		log.WithError(err).Errorf("Error deleting pod %s/%s", pod.Namespace, pod)
+		log.WithError(err).Errorf("Error getting pod %s/%s", pod.Namespace, pod.Name)
 		return
 	}
 
@@ -229,7 +229,7 @@ func (nfsc *NfshaController) deleteFromPod(ctx context.Context, pod *corev1.Pod)
 	err = nfsc.kubeClient.CoreV1().Pods(pod.Namespace).Delete(ctx, pod.Name, metav1.DeleteOptions{GracePeriodSeconds: &noGracePeriod})
 	if err != nil && !errors.IsNotFound(err) {
 		if err != nil {
-			log.WithError(err).Errorf("Error deleting pod %s/%s", pod.Namespace, pod)
+			log.WithError(err).Errorf("Error deleting pod %s/%s", pod.Namespace, pod.Name)
 			return
 		}
 	}
