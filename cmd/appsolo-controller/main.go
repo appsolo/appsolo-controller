@@ -74,7 +74,6 @@ func main() {
 
 	nfshaControllerOpts := []nfshacontroller.Option{
 		nfshacontroller.WithEventRecorder(recorder),
-		nfshacontroller.WithPodSelector(metav1.ListOptions{LabelSelector: "app=nfs-server-provisioner"}),
 	}
 
 	nfshaController := nfshacontroller.NewNFSHAController(consts.Name, kubeClient, nfshaControllerOpts...)

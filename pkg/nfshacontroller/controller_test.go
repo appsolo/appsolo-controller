@@ -162,11 +162,7 @@ func initialKubeClientWithEvent() kubernetes.Interface {
 func TestNFSHAController_Run_DeletePod(t *testing.T) {
 	kubeClient := initialKubeClientWithEvent()
 
-	nfshacontrollerOpts := []nfshacontroller.Option{
-		nfshacontroller.WithPodSelector(metav1.ListOptions{LabelSelector: "app=" + fakeConsumerLabel}),
-	}
-
-	nsfhaController := nfshacontroller.NewNFSHAController("test", kubeClient, nfshacontrollerOpts...)
+	nsfhaController := nfshacontroller.NewNFSHAController("test", kubeClient)
 
 	ctx := context.Background()
 
@@ -192,11 +188,7 @@ func TestNFSHAController_Run_DeletePodNodeReady(t *testing.T) {
 	node.Status.Conditions[1].Status = corev1.ConditionTrue
 	kubeClient := initialKubeClientWithEvent()
 
-	nfshacontrollerOpts := []nfshacontroller.Option{
-		nfshacontroller.WithPodSelector(metav1.ListOptions{LabelSelector: "app=" + fakeConsumerLabel}),
-	}
-
-	nsfhaController := nfshacontroller.NewNFSHAController("test", kubeClient, nfshacontrollerOpts...)
+	nsfhaController := nfshacontroller.NewNFSHAController("test", kubeClient)
 
 	ctx := context.Background()
 
@@ -222,11 +214,7 @@ func TestNFSHAController_Run_DeletePodNodeReady(t *testing.T) {
 func TestNFSHAController_Run_DeletePodNoEvent(t *testing.T) {
 	kubeClient := initialKubeClientWithPod()
 
-	nfshacontrollerOpts := []nfshacontroller.Option{
-		nfshacontroller.WithPodSelector(metav1.ListOptions{LabelSelector: "app=" + fakeConsumerLabel}),
-	}
-
-	nsfhaController := nfshacontroller.NewNFSHAController("test", kubeClient, nfshacontrollerOpts...)
+	nsfhaController := nfshacontroller.NewNFSHAController("test", kubeClient)
 
 	ctx := context.Background()
 
@@ -251,11 +239,7 @@ func TestNFSHAController_Run_DeletePodNoEvent(t *testing.T) {
 func TestNFSHAController_Run_DeleteNonExist(t *testing.T) {
 	kubeClient := initialKubeClientWithEvent()
 
-	nfshacontrollerOpts := []nfshacontroller.Option{
-		nfshacontroller.WithPodSelector(metav1.ListOptions{LabelSelector: "app=" + fakeConsumerLabel}),
-	}
-
-	nsfhaController := nfshacontroller.NewNFSHAController("test", kubeClient, nfshacontrollerOpts...)
+	nsfhaController := nfshacontroller.NewNFSHAController("test", kubeClient)
 
 	ctx := context.Background()
 

@@ -28,12 +28,6 @@ func WithEventRecorder(ev record.EventRecorder) Option {
 	}
 }
 
-func WithPodSelector(opts metav1.ListOptions) Option {
-	return func(nfsc *NfshaController) {
-		nfsc.podListOpts = opts
-	}
-}
-
 // Create a new nfscontroller with the given Name, Kubernetes client and opts
 // Can be customized by adding Option(s).
 func NewNFSHAController(name string, kubeClient kubernetes.Interface, opts ...Option) *NfshaController {
@@ -130,6 +124,12 @@ func (nfsc *NfshaController) HandlePodWatchEvent(ctx context.Context, ev watch.E
 	case watch.Error:
 		return fmt.Errorf("watch error: %v", ev.Object)
 	case watch.Modified:
+		// log the event and the pod name
+		pod := ev.Object.(*corev1.Pod)
+		log.WithFields(log.Fields{
+			"event": ev.Type,
+			"pod":   pod.Name,
+		}).Info("Pod event received")
 		nfsc.deleteFromPod(ctx, ev.Object.(*corev1.Pod))
 	}
 
